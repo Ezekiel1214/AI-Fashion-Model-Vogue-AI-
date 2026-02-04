@@ -1,0 +1,5 @@
+{
+  "name": "AI Fashion Model",
+  "description": "Virtual dressing room leveraging Gemini 2.5 Flash and Flash-Image models to generate photorealistic high-fashion and traditional attire edits.",
+  "requestFramePermissions": []
+}
