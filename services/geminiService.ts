@@ -9,10 +9,13 @@ const MAPS_MODEL = "gemini-2.5-flash";
 const LITE_MODEL = "gemini-flash-lite-latest"; // Fixed to use the standard alias name
 const STD_IMAGE_MODEL = "gemini-2.5-flash-image";
 const PRO_IMAGE_MODEL = "gemini-3-pro-image-preview";
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+const getGenAiClient = () => new GoogleGenAI({ apiKey: API_KEY });
 
 export const quickSuggestStyle = async (gender: string): Promise<string> => {
   // Creating a new instance to ensure the most up-to-date API key is used
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAiClient();
   try {
     const response = await ai.models.generateContent({
       model: LITE_MODEL,
@@ -26,7 +29,7 @@ export const quickSuggestStyle = async (gender: string): Promise<string> => {
 };
 
 export const getLocationInfo = async (city: string, country: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAiClient();
   try {
     const response = await ai.models.generateContent({
       model: MAPS_MODEL,
@@ -44,7 +47,7 @@ export const getLocationInfo = async (city: string, country: string): Promise<st
 };
 
 export const analyzeModel = async (base64Image: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAiClient();
   try {
     const cleanBase64 = base64Image.includes('base64,') 
       ? base64Image.split('base64,')[1] 
@@ -76,7 +79,7 @@ export const getTraditionalClothing = async (
   specificClothing?: string,
   useDeepResearch: boolean = false
 ): Promise<ClothingItem[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAiClient();
   const model = useDeepResearch ? THINKING_MODEL : RESEARCH_MODEL;
   const prompt = `List 3 distinct ${specificClothing || "trending or traditional fashion clothing items"} popular in ${city ? city + ", " : ""}${country} for a ${gender}. 
   Be specific about materials, patterns, and style. 
@@ -146,40 +149,10 @@ export const generateClothingImage = async (
   config: GenerationConfig,
   customDescription?: string
 ): Promise<string | null> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAiClient();
   const model = config.highQuality ? PRO_IMAGE_MODEL : STD_IMAGE_MODEL;
 
-  const identityProtocol = imageBase64 ? `
-  ### **Identity Preservation Protocol**
-  CRITICAL:
-  ✓ Face: 100% identical
-  ✓ Hair: Exact length, texture, color
-  ✓ Skin: Same tone and texture
-  ✓ Body: Preserved proportions
-  ` : "";
-
-  const poseInstruction = config.poseReference 
-    ? "MANDATORY: Transfer the EXACT pose, stance, and body orientation from the SECOND provided image (Pose Reference)." 
-    : `POSE: ${config.pose || "Professional Fashion Model Pose"}. Ensure a natural and professional high-fashion posture.`;
-
-  const subject = imageBase64 
-    ? "The person from the FIRST provided image (strictly adhere to Identity Protocol)" 
-    : `A photorealistic ${config.gender} fashion model`;
-
-  const outfitDescription = customDescription 
-    ? `USER INSTRUCTION: ${customDescription}` 
-    : `Wearing a ${clothing.name} (${clothing.description}) typical of ${clothing.origin}`;
-
-  const fullPrompt = `
-    ${identityProtocol}
-    TASK: Fashion Photography.
-    SUBJECT: ${subject}.
-    ${poseInstruction}
-    INSTRUCTION: ${outfitDescription}.
-    BACKGROUND: ${config.background || "Studio neutral background"}.
-    STYLE: ${config.photoshootType || "High Fashion Photography"}.
-    QUALITY: Highly detailed, realistic lighting, 8k resolution.
-  `;
+  const fullPrompt = buildImagePrompt(imageBase64, clothing, config, customDescription);
 
   const parts: any[] = [];
 
@@ -210,16 +183,7 @@ export const generateClothingImage = async (
   // Part 3: Text Prompt
   parts.push({ text: fullPrompt });
 
-  const genConfig: any = {
-    imageConfig: {
-      aspectRatio: config.aspectRatio || '3:4'
-    }
-  };
-
-  if (config.highQuality) {
-    // imageSize is only supported on gemini-3-pro-image-preview
-    genConfig.imageConfig.imageSize = "2K";
-  }
+  const genConfig = buildImageConfig(config);
 
   try {
     const response = await ai.models.generateContent({
@@ -239,4 +203,58 @@ export const generateClothingImage = async (
     console.error("Error generating image:", error);
     throw error;
   }
+};
+
+export const buildImagePrompt = (
+  imageBase64: string | null,
+  clothing: ClothingItem,
+  config: GenerationConfig,
+  customDescription?: string
+) => {
+  const identityProtocol = imageBase64 ? `
+  ### **Identity Preservation Protocol**
+  CRITICAL:
+  ✓ Face: 100% identical
+  ✓ Hair: Exact length, texture, color
+  ✓ Skin: Same tone and texture
+  ✓ Body: Preserved proportions
+  ` : "";
+
+  const poseInstruction = config.poseReference 
+    ? "MANDATORY: Transfer the EXACT pose, stance, and body orientation from the SECOND provided image (Pose Reference)." 
+    : `POSE: ${config.pose || "Professional Fashion Model Pose"}. Ensure a natural and professional high-fashion posture.`;
+
+  const subject = imageBase64 
+    ? "The person from the FIRST provided image (strictly adhere to Identity Protocol)" 
+    : `A photorealistic ${config.gender} fashion model`;
+
+  const outfitDescription = customDescription 
+    ? `USER INSTRUCTION: ${customDescription}` 
+    : `Wearing a ${clothing.name} (${clothing.description}) typical of ${clothing.origin}`;
+
+  return `
+    ${identityProtocol}
+    TASK: Fashion Photography.
+    SUBJECT: ${subject}.
+    ${poseInstruction}
+    INSTRUCTION: ${outfitDescription}.
+    BACKGROUND: ${config.background || "Studio neutral background"}.
+    STYLE: ${config.photoshootType || "High Fashion Photography"}.
+    QUALITY: Highly detailed, realistic lighting, 8k resolution.
+  `.trim();
+};
+
+export const buildImageConfig = (config: GenerationConfig) => {
+  const genConfig: { imageConfig: { aspectRatio: string; imageSize?: string } } = {
+    imageConfig: {
+      aspectRatio: config.aspectRatio || "3:4"
+    }
+  };
+
+  if (config.highQuality) {
+    // imageSize is only supported on gemini-3-pro-image-preview
+    genConfig.imageConfig.imageSize = "2K";
+  }
+
+  return genConfig;
 };
