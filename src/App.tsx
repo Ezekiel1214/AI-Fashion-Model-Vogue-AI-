@@ -625,9 +625,15 @@ const App: React.FC = () => {
   // Note: handleCropMouseMove and handleCropMouseUp are now handled by window effect
 
   const isResearching = isGenerating && !generatedImages.some(img => img.status === 'loading' || img.status === 'pending');
+  const hasEnvKey = Boolean(import.meta.env.VITE_GEMINI_API_KEY);
 
   return (
     <div className="flex h-screen w-screen bg-stone-950 text-stone-200 overflow-hidden font-sans">
+      {!hasEnvKey && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-lg border border-amber-500/40 bg-amber-900/20 text-amber-200 text-xs shadow-lg">
+          Missing <code>VITE_GEMINI_API_KEY</code>. Add it to <code>.env.local</code> before generating images.
+        </div>
+      )}
       {/* Sidebar Inlined to fix focus loss bug */}
       <div className="w-full md:w-80 lg:w-96 flex-shrink-0 bg-stone-900 border-r border-stone-800 h-full overflow-y-auto no-scrollbar p-6 flex flex-col gap-6">
         

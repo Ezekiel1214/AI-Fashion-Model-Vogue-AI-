@@ -1,20 +1,46 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# AI Fashion Model — VOGUE.AI
 
-# Run and deploy your AI Studio app
+A Vite + React + TypeScript app that generates fashion photoshoot variations using Gemini.
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/18P4nrE_Q5AhL0BoHs73ANRaZ4s8Gqeoi
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
+## Local development
 
 1. Install dependencies:
-   `npm install`
-2. Set the `VITE_GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+
+```bash
+npm install
+```
+
+2. Create your env file:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Add your Gemini API key in `.env.local`:
+
+```env
+VITE_GEMINI_API_KEY=YOUR_KEY_HERE
+```
+
+4. Start dev server:
+
+```bash
+npm run dev
+```
+
+Open http://localhost:3000.
+
+## Build
+
+```bash
+npm run build
+```
+
+## Deploy to Vercel
+
+- Framework Preset: **Vite**
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Environment Variable: `VITE_GEMINI_API_KEY`
+
+`vercel.json` includes an SPA rewrite so client-side routing works.
